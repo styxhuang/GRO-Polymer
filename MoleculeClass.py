@@ -29,6 +29,9 @@ class MoleculeInfo(object):
     def getAtoms(self):
         return self.__atoms__
     
+    def delAtoms(self, index):
+        self.__atoms__.pop(index)
+        
     def outputInfo(self):
         print("Index: ", self.__index__, "\tName: ", self.__name__, "\t", len(self.__atoms__), "\t", "Reactive atoms: ", self.__reactAtoms__[0])
         for i in range (len(self.__atoms__)):
