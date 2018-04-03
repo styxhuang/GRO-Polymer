@@ -6,6 +6,8 @@ Created on Mon Apr  2 16:19:23 2018
 """
 
 import pandas as pd
+import itertools
+import numpy as np
 
 import AtomClass as Atom
 import MoleculeClass as Mol
@@ -48,6 +50,9 @@ def AtomInfoInput(atom, line):
     atom.setPos(atomPos)
     return atom
 
+def DelAtoms(index, molList):
+    molList.pop(index)
+    
 def MolInfoInput(index, name, atomList):
     mol = Mol.MoleculeInfo()
     mol.setIndex(index)
@@ -127,6 +132,50 @@ def SplitMonCro(monR, croR, molList):
             print('No specified atoms in the list, please check your input!')
     return monReactiveAtoms, croReactiveAtoms
 
+def CalDist(aPos, bPos):
+    x2 = np.power(float(aPos[0])-float(bPos[0]),2)
+    y2 = np.power(float(aPos[1])-float(bPos[1]),2)
+    z2 = np.power(float(aPos[2])-float(bPos[2]),2)
+    dist = np.sqrt(x2+y2+z2)
+    return dist
+
+def Crosslink(reactLists, molList, cutoff):
+    monAtoms = []
+    croAtoms = []
+    monList = reactLists[0]
+    croList = reactLists[1]
+#    print(monList)
+    for mon in monList:
+        atom = GetAtom(mon, molList)
+        monAtoms.append(atom)
+
+        
+    for cro in croList:
+        atom = GetAtom(cro, molList)
+        croAtoms.append(atom)
+    
+    list(itertools.chain.from_iterable(monAtoms))
+    list(itertools.chain.from_iterable(croAtoms))
+    
+    for croAtom in croAtoms:
+        posCRO = croAtom[0].getPos()
+        for monAtom in monAtoms:
+            posMON = monAtom[0].getPos()
+            dist = CalDist(posCRO, posMON)
+            if dist < cutoff:
+                print(monAtom[0].getglobalIndex())
+                print("bond!")
+    return monAtoms, croAtoms
+    
+def GetAtom(Index, molList):
+    atoms = []
+    molIndex = Index[0]
+    atomIndex = Index[1]
+    for idx in atomIndex:    
+        atom = molList[molIndex].getAtoms()[idx]
+        atoms.append(atom)
+    return atoms
+
 def ExportGRO(info, outputName, molList):
     index = 1
     for i in range (len(molList)):
@@ -160,6 +209,7 @@ filename = 'min.gro'
 outputName = 'tst.gro'
 monR = 'C1'
 croR = 'N1'
+cutoff = 3.
 
 #df = pd.read_json(filename, sep='\n', header=None)
 df = pd.read_csv(filename, sep='\n', header=None)
@@ -172,6 +222,7 @@ info = [molName, molNum, molSize]
 atomsList = SplitAtom(baseList)
 molList = Atom2Mol(atomsList)
 ReactAtoms = SplitMonCro(monR, croR, molList)
+a = Crosslink(ReactAtoms, molList, cutoff)
 ExportGRO(info, outputName, molList)
 #a = df.iloc[2][0]
 #b = splitString(a)
