@@ -14,6 +14,27 @@ import AtomClass as Atom
 import MoleculeClass as Mol
 import SystemClass as SysClass
 
+dictBond = {
+        'C-N': '1, 0.14700, 268278.'
+        }
+
+dictAngle = { #TODO: keep update angle coefficient
+        'N-C-N': '1, 110.380, 553.9616',
+        'C-O-C': '1, 117.600, 522.1632',
+        'C-C-N': '1, 110.380, 553.9616',
+        'C-N-C': '1, 110.900, 535.5520',
+        'N-C-C': '1, 110.380, 553.9616',
+        'H-C-N': '1, 109.920, 413.3792',
+        'C-N-H': '1, 109.920, 394.1328'
+        }
+
+dictDihedral = { #Has little different on the 3 column, some combination is 2 and 3'
+        'C-C-O-C': '1, 180.000, 3.766, 2',
+        'C-O-C-C': '1, 180.000, 4.602, 2',
+        'C-N-C-C': '1, 180.000, 2.008, 2',
+        'C-C-N-C': '1, 180.000, 2.008, 2'
+        }
+
 def splitString(s):
     string = []
     digit = []
@@ -51,12 +72,13 @@ def AtomInfoInput(atom, line):
     atom.setPos(atomPos)
     return atom
 
-def DelAtoms(atomName, mol): #Doesn't work, needs to be fixed, suppose should because the mol doesn't change the mollist content
-    print('del atoms: ', atomName)
+def DelAtoms(atomName, mol):
     for atom in mol.getAtoms():
-        if atom.getatomName == atomName:
+        print(atom.getatomName())
+        if atom.getatomName() == atomName:
             index = atom.getlocalIndex()
-            mol.pop(index)
+            mol.getAtoms().pop(index)
+#    return mol
     
 def MolInfoInput(index, name, atomList):
     mol = Mol.MoleculeInfo()
@@ -179,7 +201,7 @@ def Crosslink(monR, croR, molList, cutoff):
     initList = GetMonCroList(monR, croR, molList)
     croAtoms = initList[1]
     outputName = 'tst.top'
-#    os.remove('tst.top')
+    os.remove('tst.top')
     for croAtom in croAtoms:
         initList = GetMonCroList(monR, croR, molList)
         monAtoms = initList[0]
@@ -187,7 +209,9 @@ def Crosslink(monR, croR, molList, cutoff):
 
         for monAtom in monAtoms:
             posMON = monAtom[0].getPos()
-            Genbond(monAtom[0], croAtom[0], molList, cutoff, outputName) 
+            a = Genbond(monAtom[0], croAtom[0], molList, cutoff, outputName) 
+            if a == 1:
+                break
     return molList
 
 def Genbond(atom1, atom2, molList, cutoff, outputName):
@@ -211,9 +235,12 @@ def Genbond(atom1, atom2, molList, cutoff, outputName):
         MolInfoUpdate(mol2, reactedCRO, Name=True)
         DelAtoms('H1',mol1)
         f = open(outputName, 'a')
-        str1 = "Idx1: {:>6},    Idx2: {}\n".format(atom1_Idx, atom2_Idx)
+        str1 = "{:>8}{:>6}{:>4}{:>12}{:>12}\n".format(atom1_Idx, atom2_Idx, 6, 0.14700, 268278.)
         f.write(str1)
         f.close()
+        return 1
+    return 0
+    
 #    f = open('tst.top', 'a')
 #    
 #    str1 = "Idx: {}, localIdx: {}, molIdx: {}\n".format(atom1_Idx, atom1_localIdx, mol1_Idx)
@@ -229,6 +256,8 @@ def Criteria1(dist, cutoff):
     else:
         return False
 
+def Criterial2():
+    pass
 def GetAtom(Index, molList):
     atoms = []
     molIndex = Index[0]
@@ -248,9 +277,6 @@ def ExportGRO(info, outputName, molList):
             atom = atoms[ii]
             AtomInfoUpdate(atom, idx, Index=True)
         index += length
-#    for atom in atomsList:
-#        str1 = atom.outputInfo()
-#        print(str1)
     f = open(outputName, 'w')
     molName = info[0] + '\n'
     molNum = info[1] + '\n'
@@ -262,7 +288,6 @@ def ExportGRO(info, outputName, molList):
         atoms = mol.getAtoms()
         for atom in atoms:
             str1 = atom.outputInfo() + '\n'
-#            print(str1)
             f.write(str1)
     f.write(molSize)
     f.close()
