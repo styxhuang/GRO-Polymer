@@ -43,15 +43,18 @@ def MDSimulation():
     subprocess.call(command4, shell=True)
 
 def ExportTop(info, topName, monBR, monAR, croBR, croAR):
-    monBR_num = info[0]
-    monAR_num = info[1]
-    croBR_num = info[2]
-    croAR_num = info[3]
-    bondInfo = info[4]
-    mor_num = info[5]
-    cor_num = info[6]
+#    monBR_num = info[0]
+#    monAR_num = info[1]
+#    croBR_num = info[2]
+#    croAR_num = info[3]
+#    bondInfo = info[4]
+#    mor_num = info[5]
+#    cor_num = info[6]
 #    with fileinput.FileInput(topName, inplace=True, backup='.bak') as file:
 #        for line in file:
+    nameList = info[0]
+    bondInfo = info[1]
+    
     df= pd.read_csv(topName, sep='\n', header=None)
     idx = df.index[df[0].str.contains('molecules')].tolist() #Assumption, in top file, the molecule column start with monBR
     if len(idx) > 2:
@@ -59,27 +62,31 @@ def ExportTop(info, topName, monBR, monAR, croBR, croAR):
     else:
         print('idx: ', idx)
         tmp = df.drop(df.index[int(idx[0])+1:]).reset_index(drop=True)
-        str1 = '{:>5}\t{:>2}'.format(monBR, monBR_num)
-        str2 = '{:>5}\t{:>2}'.format(monAR, monAR_num)
-        str3 = '{:>5}\t{:>2}'.format(croBR, croBR_num)
-        str4 = '{:>5}\t{:>2}'.format(croAR, croAR_num)
-        str5 = '{:>5}\t{:>2}'.format(monAR+'R', mor_num)
-        str6 = '{:>5}\t{:>2}'.format(croAR+'R', cor_num)
+#        str1 = '{:>5}\t{:>2}'.format(monBR, monBR_num)
+#        str2 = '{:>5}\t{:>2}'.format(monAR, monAR_num)
+#        str3 = '{:>5}\t{:>2}'.format(croBR, croBR_num)
+#        str4 = '{:>5}\t{:>2}'.format(croAR, croAR_num)
+#        str5 = '{:>5}\t{:>2}'.format(monAR+'R', mor_num)
+#        str6 = '{:>5}\t{:>2}'.format(croAR+'R', cor_num)
         str7 = '\n'
         str8 = '[ intermolecular_interactions ]'
         str9 = '  [ bonds ]'
         
-        Input = [str1, str2, str3, str4, str5, str6, str7, str8, str9]
-
-        for i in range (len(Input) + len(bondInfo)):
-            index = idx[0] + i + 1
-            print('index', index)
-
-            if i < len(Input):
-                tmp.loc[index] = Input[i]
-            else:
-                str1 = bondInfo[i - len(Input) - 1]
-                tmp.loc[index] = str1
+#        Input = [str1, str2, str3, str4, str5, str6, str7, str8, str9]
+        for i in range(len(nameList)):
+            index1 = idx[0] + i + 1
+            str1 = '{}\t{}'.format(nameList[i], 1)
+            tmp.loc[index1] = str1
+            
+        tmp.loc[index1 + 1] = str7
+        tmp.loc[index1 + 2] = str8
+        tmp.loc[index1 + 3] = str9
+        
+        for ii in range (len(bondInfo)):
+            index2 = index1 + 3 + ii + 1
+            print('index', index2)
+            str2 = bondInfo[ii]
+            tmp.loc[index2] = str2
 
     f = open('test.top', 'w')        
     for i in range(len(tmp)):
@@ -204,7 +211,7 @@ def main():
         bonds += int(bondCycle)
 
 ###############################################################################
-filename = 'box.gro'
+filename = 'min.gro'
 outputName = 'tst.gro'
 topName = 'tst.top'
 topFName = 'topol.top'
@@ -219,5 +226,5 @@ atom2AR = 'NR'
 
 cutoff = 10.
 bondCycle = 2
-num = readGRO.Main(filename, outputName, topName, monBR, monAR, croBR, croAR, atom1BR, atom1AR, atom2BR, atom2AR, cutoff, bondCycle)
-ExportTop(num, topFName, monBR, monAR, croBR, croAR)
+info = readGRO.Main(filename, outputName, topName, monBR, monAR, croBR, croAR, atom1BR, atom1AR, atom2BR, atom2AR, cutoff, bondCycle)
+ExportTop(info, topFName, monBR, monAR, croBR, croAR)

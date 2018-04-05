@@ -376,6 +376,13 @@ def CountResidue(resName, molList):
             count += 1
     return count
 
+def GetMolNameList(molList):
+    nameList = []
+    for mol in molList:
+        name = mol.getName()
+        nameList.append(name)
+    return nameList
+
 def ExportBond(pairList, molList, topName):
     output = []
     for i in range(len(pairList)):
@@ -402,14 +409,16 @@ def Main(filename, outputName, topName, monBR, monAR, croBR, croAR, atom1BR, ato
     print('pairList: ', pairList)
     ExportGRO(info, outputName, molList)
     bondInfo = ExportBond(pairList, molList, topName)
-    monNum = CountResidue(monBR, molList)
-    croNum = CountResidue(croBR, molList)
-    moNum = CountResidue(monAR, molList)
-    coNum = CountResidue(croAR, molList)
-    morNum = CountResidue(monAR+'R', molList)
-    corNum = CountResidue(croAR+'R', molList)
+    nameList = GetMolNameList(molList)
+#    monNum = CountResidue(monBR, molList)
+#    croNum = CountResidue(croBR, molList)
+#    moNum = CountResidue(monAR, molList)
+#    coNum = CountResidue(croAR, molList)
+#    morNum = CountResidue(monAR+'R', molList)
+#    corNum = CountResidue(croAR+'R', molList)
     
-    return monNum, moNum, croNum, coNum, bondInfo, morNum, corNum
+    
+    return nameList, bondInfo
 ##########################################################
 #                         Test                           #
 ##########################################################

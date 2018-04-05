@@ -24,16 +24,4 @@
  ; title from mol2 input
  system.pdb
 
-; [ molecules ]
-; molecule name    nr.
-;system.pdb           1
-
 [ molecules ]
-; Compound        #mols
-MON		  150
-CRO 		  75
-;BON		  1
-
-;[ intermolecular_interactions ]
-;  [ bonds ]
-;       5     8   6     0.14480      319658.       ;     N-     C
