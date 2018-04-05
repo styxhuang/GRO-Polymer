@@ -1,27 +1,37 @@
 ; Include forcefield parameters
 #include "oplsaa.ff/forcefield.itp"
-
 ; Include chain topologies
 #include "mon.itp"
 #include "cro.itp"
-#include "mon-open.itp"
-#include "cro-open.itp"
-
+#include "mo.itp"
+#include "co.itp"
+#include "mor.itp"
+#include "cor.itp"
 ; Include water topology
 #include "oplsaa.ff/spc.itp"
-
 #ifdef POSRES_WATER
 ; Position restraint for each water oxygen
 [ position_restraints ]
 ;  i funct       fcx        fcy        fcz
    1    1       1000       1000       1000
    #endif
-
 ; Include generic topology for ions
 #include "oplsaa.ff/ions.itp"
-
  [ system ]
  ; title from mol2 input
  system.pdb
-
 [ molecules ]
+  MON	 8
+   MO	 0
+  CRO	 3
+   CO	 0
+  MOR	 2
+  COR	 2
+
+
+[ intermolecular_interactions ]
+  [ bonds ]
+     260   690   6     0.14700      268278.
+
+     365   730   6     0.14700      268278.
+
