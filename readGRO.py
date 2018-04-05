@@ -9,13 +9,14 @@ import os
 import pandas as pd
 import itertools
 import numpy as np
+import random
 
 import AtomClass as Atom
 import MoleculeClass as Mol
 import SystemClass as SysClass
 
 dictBond = {
-        'C-N': '1, 0.14700, 268278.'
+        'C-N': '6, 0.14700, 268278.'
         }
 
 dictAngle = { #TODO: keep update angle coefficient
@@ -74,32 +75,40 @@ def AtomInfoInput(atom, line):
 
 def DelAtoms(atomName, mol):
     for atom in mol.getAtoms():
-        print(atom.getatomName())
         if atom.getatomName() == atomName:
             index = atom.getlocalIndex()
             mol.getAtoms().pop(index)
 #    return mol
-    
+
+def DelHydrogen(idx, mol):
+    mol.getAtoms().pop(idx+1)
+    atoms = mol.getAtoms()
+    for i in range (len(atoms)):
+        atoms[i].setlocalIndex(i)
+        
+#    for atom in mol.getAtoms():
+#        index = atom.getlocalIndex()
+#        print('localIdx: ', index)
+
 def MolInfoInput(index, name, atomList):
     mol = Mol.MoleculeInfo()
-    mol.setIndex(index)
+    mol.setIndex(str(int(index) + 1)) #this mol index start from 0
     mol.setName(name)
     for i in range(len(atomList)):
         mol.setAtoms(atomList[i])
         
     return mol
 
-def MolInfoUpdate(mol, resName, Name=False):
+def MolInfoUpdate(mol, resName, localIdx, atomBR, atomAR, Name=False):
     if Name:
+        if localIdx != 0: #Assume if not the 1st atom reacted, then the residue name will add 'R' at the end
+            resName = resName + 'R'
         mol.setName(resName)
         atoms = mol.getAtoms()
+        print('localIdx', localIdx)
+        atoms[localIdx].setatomName(atomAR)
         for atom in atoms:
-            atom.setmolName(resName)
-            name = atom.getatomName()
-            if name == 'C1':
-                atom.setatomName('C')
-            elif name == 'N1':
-                atom.setatomName('N')
+            atom.setmolName(resName)        
                 
 def GetTopMol(atomList):
     index = atomList[0].getmolNum()
@@ -151,24 +160,30 @@ def GetReactAtoms(atomName, atomsList):
     for i in range (len(atomsList)):
         name = atomsList[i].getatomName()
         if name == atomName:
-#            idx = atomsList[i].getglobalIndex()
             index.append(i)
     return index
 
 def SplitMonCro(monR, croR, molList):
     monReactiveAtoms = []
     croReactiveAtoms = []
+    print('molList', len(molList))
     for i in range (len(molList)):
         atoms = molList[i].getAtoms()
         if (CheckReactAtoms(monR, atoms)):           
             idxMon = GetReactAtoms(monR, atoms)
-            monReactiveAtoms.append([i, idxMon])
+#            print('idxMon', idxMon)
+            for idx in idxMon:
+                monReactiveAtoms.append([i, idx])
         elif (CheckReactAtoms(croR, atoms)):
             idxCro = GetReactAtoms(croR, atoms)
-            croReactiveAtoms.append([i, idxCro])
+#            print('idxCro', idxCro)
+            for idx in idxCro:
+                croReactiveAtoms.append([i, idx])
         else:
             pass
-#            print('No specified atoms in the list, please check your input!')
+            print('No specified atoms in the list, please check your input!')
+    print('monReactiveAtoms', len(monReactiveAtoms))
+    print('croReactiveAtoms', len(croReactiveAtoms))
     return monReactiveAtoms, croReactiveAtoms
 
 def CalDist(aPos, bPos):
@@ -183,8 +198,9 @@ def GetMonCroList(monR, croR, molList):
     monAtoms = []
     croAtoms = []
     monList = reactLists[0]
+    print('monList', monList)
     croList = reactLists[1]
-    
+    print('croList', croList)
     for mon in monList:
         atom = GetAtom(mon, molList)
         monAtoms.append(atom)
@@ -192,63 +208,73 @@ def GetMonCroList(monR, croR, molList):
     for cro in croList:
         atom = GetAtom(cro, molList)
         croAtoms.append(atom)
-    list(itertools.chain.from_iterable(monAtoms))
-    list(itertools.chain.from_iterable(croAtoms))
+        
+#    print('monAtoms', monAtoms)
+#    print('croAtoms', croAtoms)
+#    list(itertools.chain.from_iterable(monAtoms))
+#    list(itertools.chain.from_iterable(croAtoms))
     
     return monAtoms, croAtoms
 
-def Crosslink(monR, croR, molList, cutoff):
-    initList = GetMonCroList(monR, croR, molList)
+def Crosslink(monBR, monAR, croBR, croAR, atom1BR, atom1AR, atom2BR, atom2AR, molList, cutoff, bondCycle):
+    pairs = []
+    initList = GetMonCroList(atom1BR, atom2BR, molList)
     croAtoms = initList[1]
     outputName = 'tst.top'
-    os.remove('tst.top')
+    if os.path.isfile(outputName):
+        os.remove(outputName)
+    bond = 0
+    random.shuffle(croAtoms)
     for croAtom in croAtoms:
-        initList = GetMonCroList(monR, croR, molList)
+        initList = GetMonCroList(atom1BR, atom2BR, molList) #Since mon list needs to update each loop
+#        print('initList: ', initList)
         monAtoms = initList[0]
-        posCRO = croAtom[0].getPos()
+        random.shuffle(monAtoms)
 
         for monAtom in monAtoms:
-            posMON = monAtom[0].getPos()
-            a = Genbond(monAtom[0], croAtom[0], molList, cutoff, outputName) 
-            if a == 1:
+            pair = Genbond(monAtom, croAtom, molList, cutoff, outputName, monAR, croAR, atom1BR, atom1AR, atom2BR, atom2AR)  
+            print('pair: ', pair)
+            if pair != 0:
+                pairs.append(pair)
                 break
-    return molList
+        bond += 1
+        if bond >= bondCycle:
+            break
 
-def Genbond(atom1, atom2, molList, cutoff, outputName):
-    reactedMON = 'MOO'
-    reactedCRO = 'COO'
-    atom1_Idx = atom1.getglobalIndex()
-    atom1_localIdx = atom1.getlocalIndex()
-    atom2_Idx = atom2.getglobalIndex()
-    atom2_localIdx = atom2.getlocalIndex()
-    
+    return pairs, molList
+
+def Genbond(atom1, atom2, molList, cutoff, outputName, monAR, croAR, atom1BR, atom1AR, atom2BR, atom2AR):
+    reactedMON = monAR
+    reactedCRO = croAR
+
     mol1_Idx = int(atom1.getmolNum())
     mol2_Idx = int(atom2.getmolNum())
+    local_Idx1 = atom1.getlocalIndex()
+    local_Idx2 = atom2.getlocalIndex()
+    
     dist = CalDist(atom1.getPos(), atom2.getPos())
     cond1 = Criteria1(dist, cutoff)
-#    print(mol2_Idx)
-#    print(len(molList))
-    if cond1:
+    
+    if cond1:      
         mol1 = molList[mol1_Idx - 1]
         mol2 = molList[mol2_Idx - 1]
-        MolInfoUpdate(mol1, reactedMON, Name=True)
-        MolInfoUpdate(mol2, reactedCRO, Name=True)
-        DelAtoms('H1',mol1)
-        f = open(outputName, 'a')
-        str1 = "{:>8}{:>6}{:>4}{:>12}{:>12}\n".format(atom1_Idx, atom2_Idx, 6, 0.14700, 268278.)
-        f.write(str1)
-        f.close()
-        return 1
+        MolInfoUpdate(mol1, reactedMON, local_Idx1, atom1BR, atom1AR, Name=True)
+        MolInfoUpdate(mol2, reactedCRO, local_Idx2, atom2BR, atom2AR, Name=True)
+        
+        idx_1 = atom1.getlocalIndex()
+        idx_2 = atom2.getlocalIndex()
+        
+        DelHydrogen(idx_1, mol1)
+        DelHydrogen(idx_2, mol2)
+        
+        pair = [[mol1_Idx, atom1.getlocalIndex()],[mol2_Idx, atom2.getlocalIndex()]]
+#        print('atom1_Idx_del: ', atom1.getglobalIndex())
+#        f = open(outputName, 'a')
+#        str1 = "{:>8}{:>6}{:>4}{:>12}{:>12}\n".format(atom1_Idx, atom2_Idx, 6, 0.14700, 268278.)
+#        f.write(str1)
+#        f.close()
+        return pair
     return 0
-    
-#    f = open('tst.top', 'a')
-#    
-#    str1 = "Idx: {}, localIdx: {}, molIdx: {}\n".format(atom1_Idx, atom1_localIdx, mol1_Idx)
-#    f.write(str1)
-#    f.close()
-    
-#    return monList, croList
-#    AtomInfoUpdate(molList[mol1_Idx], )
 
 def Criteria1(dist, cutoff): 
     if dist < cutoff:
@@ -259,14 +285,20 @@ def Criteria1(dist, cutoff):
 def Criterial2():
     pass
 def GetAtom(Index, molList):
-    atoms = []
     molIndex = Index[0]
     atomIndex = Index[1]
-    for idx in atomIndex:    
-        atom = molList[molIndex].getAtoms()[idx]
-        atoms.append(atom)
-    return atoms
+    
+    atom = molList[molIndex].getAtoms()[atomIndex]
+    return atom
 
+def GetInfo(info, category='bond'):
+    if category == 'bond':
+        if info in dictBond:
+            coeff = dictBond[info]
+            return coeff
+    else:
+        print("Don't have this info")
+    
 def ExportGRO(info, outputName, molList):
     index = 1
     for i in range (len(molList)):
@@ -279,11 +311,19 @@ def ExportGRO(info, outputName, molList):
         index += length
     f = open(outputName, 'w')
     molName = info[0] + '\n'
-    molNum = info[1] + '\n'
+    ##############################
+    num = 0
+    for mol in molList:
+        atoms = mol.getAtoms()
+        for atom in atoms:
+            num += 1
+    molNum = str(num) + '\n'
+    ##############################
     molSize = info[2] + '\n'
     
     f.write(molName)
     f.write(molNum)
+
     for mol in molList:
         atoms = mol.getAtoms()
         for atom in atoms:
@@ -291,25 +331,111 @@ def ExportGRO(info, outputName, molList):
             f.write(str1)
     f.write(molSize)
     f.close()
+
+def HasNumbers(inString):
+    return any(char.isdigit() for char in inString)
+
+def ExtraLetterCheck(inString):
+    string = ['C', 'N', 'O']
+    return [char for char in inString if char in string]
+
+def GetBondInfo(molInfo, molList):
+    atom1Info = molInfo[0]
+    atom2Info = molInfo[1]
     
-filename = 'min.gro'
-outputName = 'tst.gro'
-monR = 'C1'
-croR = 'N1'
-cutoff = 1.
+    mol1_idx = atom1Info[0] - 1
+    mol2_idx = atom2Info[0] - 1
 
-#df = pd.read_json(filename, sep='\n', header=None)
-df = pd.read_csv(filename, sep='\n', header=None)
-baseList = df.iloc[2:-1].reset_index(drop=True)[0].str.split()
-molName = df.iloc[0][0]
-molNum = df.iloc[1][0]
-molSize = df.iloc[-1][0]
-info = [molName, molNum, molSize]
+    atom1 = molList[mol1_idx].getAtoms()[atom1Info[1]]
+    atom2 = molList[mol2_idx].getAtoms()[atom2Info[1]] 
 
-atomsList = SplitAtom(baseList)
-molList = Atom2Mol(atomsList)
-#ReactAtoms = SplitMonCro(monR, croR, molList)
-a = Crosslink(monR, croR, molList, cutoff)
-ExportGRO(info, outputName, a)
-#a = df.iloc[2][0]
-#b = splitString(a)
+    idx_1 = atom1.getglobalIndex()
+    idx_2 = atom2.getglobalIndex()
+    
+    name1 = atom1.getatomName()
+    name2 = atom2.getatomName()
+        
+#    if HasNumbers(name1):
+#        name1 = ''.join([i for i in name1 if not i.isdigit()])
+#    if HasNumbers(name2):
+#        name2 = ''.join([i for i in name2 if not i.isdigit()])   
+    name1 = ''.join(ExtraLetterCheck(name1))
+    name2 = ''.join(ExtraLetterCheck(name2))
+    
+    info = name1 + '-' + name2
+    coeff = GetInfo(info, 'bond').split(',')
+    
+    str1 = "{:>8}{:>6}{:>4}{:>12}{:>13}\n".format(idx_1, idx_2, coeff[0], coeff[1], coeff[2])
+    
+    return str1
+def CountResidue(resName, molList):
+    count = 0
+    for mol in molList:
+        name = mol.getName()
+        if name == resName:
+            count += 1
+    return count
+
+def ExportBond(pairList, molList, topName):
+    output = []
+    for i in range(len(pairList)):
+        info = GetBondInfo(pairList[i], molList)
+        output.append(info)
+#        f = open(topName, 'a')
+#        f.write(info)
+#        f.close()
+    return output
+
+def Main(filename, outputName, topName, monBR, monAR, croBR, croAR, atom1BR, atom1AR, atom2BR, atom2AR, cutoff, bondCycle):
+    df = pd.read_csv(filename, sep='\n', header=None)
+    baseList = df.iloc[2:-1].reset_index(drop=True)[0].str.split()
+    molName = df.iloc[0][0]
+    molNum = df.iloc[1][0]
+    molSize = df.iloc[-1][0]
+    info = [molName, molNum, molSize]
+    
+    atomsList = SplitAtom(baseList)
+    molList = Atom2Mol(atomsList)
+    tmpList = Crosslink(monBR, monAR, croBR, croAR, atom1BR, atom1AR, atom2BR, atom2AR, molList, cutoff, bondCycle)
+    molList = tmpList[1]
+    pairList = tmpList[0]
+    print('pairList: ', pairList)
+    ExportGRO(info, outputName, molList)
+    bondInfo = ExportBond(pairList, molList, topName)
+    monNum = CountResidue(monBR, molList)
+    croNum = CountResidue(croBR, molList)
+    moNum = CountResidue(monAR, molList)
+    coNum = CountResidue(croAR, molList)
+    morNum = CountResidue(monAR+'R', molList)
+    corNum = CountResidue(croAR+'R', molList)
+    
+    return monNum, moNum, croNum, coNum, bondInfo, morNum, corNum
+##########################################################
+#                         Test                           #
+##########################################################
+#filename = 'min.gro'
+#outputName = 'tst.gro'
+#topName = 'tst.top'
+#monBR = 'MON'
+#monAR = 'MO'
+#croBR = 'CRO'
+#croAR = 'CO'
+#atom1BR = 'C1'
+#atom1AR = 'CR'
+#atom2BR = 'N1'
+#atom2AR = 'NR'
+#
+#cutoff = 10.
+#bondCycle = 2
+#
+#a=Main(filename, outputName, topName, monBR, monAR, croBR, croAR, atom1BR, atom1AR, atom2BR, atom2AR, cutoff, bondCycle)
+#print(a)
+
+
+
+
+
+
+
+
+

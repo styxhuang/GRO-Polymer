@@ -33,11 +33,10 @@ class MoleculeInfo(object):
         self.__atoms__.pop(index)
         
     def outputInfo(self):
-        print("Index: ", self.__index__, "\tName: ", self.__name__, "\t", len(self.__atoms__), "\t", "Reactive atoms: ", self.__reactAtoms__[0])
+        print("Index: ", self.__index__, "\tName: ", self.__name__, "\t", len(self.__atoms__))
         for i in range (len(self.__atoms__)):
-            index = self.__atoms__[i].getIndex()
-            name = self.__atoms__[i].getAtomName()
-            subName = self.__atoms__[i].getSubName()
-            print(index, "\t", name, "\t", subName)
+            index = self.__atoms__[i].getglobalIndex()
+            name = self.__atoms__[i].getatomName()
+            print(index, "\t", name)
             
             

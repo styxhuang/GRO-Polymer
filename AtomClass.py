@@ -32,7 +32,6 @@ class AtomsInfo(object):
     def setPos(self, pos):
         self.__pos__ = pos
         
-    
     #################################
     def getmolNum(self):
         return self.__molNum__
@@ -54,5 +53,8 @@ class AtomsInfo(object):
     
     def outputInfo(self):
         mol = str(self.__molNum__) + self.__molName__
-        str1 = '{:>8}{:>7}{:>5}{:>8}{:>8}{:>8}'.format(mol, self.__atomName__, self.__globalIndex__, self.__pos__[0], self.__pos__[1], self.__pos__[2])
+        posX = '{:.3f}'.format(float(self.__pos__[0]))
+        posY = '{:.3f}'.format(float(self.__pos__[1]))
+        posZ = '{:.3f}'.format(float(self.__pos__[2]))
+        str1 = '{:>8}{:>7}{:>5}{:>8}{:>8}{:>8}'.format(mol, self.__atomName__, self.__globalIndex__, posX, posY, posZ)
         return str1
